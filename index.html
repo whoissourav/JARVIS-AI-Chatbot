@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JARVIS</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        #chat-container {
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+            padding: 10px;
+            height: 300px;
+            overflow-y: scroll;
+            margin-bottom: 10px;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+        }
+
+        .user-message {
+            background-color: #f0f0f0;
+            text-align: right;
+        }
+
+        .bot-message {
+            background-color: #007bff;
+            color: #fff;
+        }
+
+        #user-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        #voice-command-btn {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+
+        /* Add a new style for the voice command button */
+        #voice-command-btn {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>JARVIS</h1>
+    <div id="chat-container">
+        <!-- Chat messages will be displayed here -->
+    </div>
+    <div class="user-input-container">
+        <input type="text" id="user-input" placeholder="Type your message...">
+    </div>
+    <button id="voice-command-btn">Speak</button> <!-- Add a button for voice command -->
+
+    <!-- Add an invisible audio element for voice response -->
+    <audio id="voice-response" style="display: none;"></audio>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatContainer = document.getElementById('chat-container');
+            const userInput = document.getElementById('user-input');
+            const voiceCommandBtn = document.getElementById('voice-command-btn');
+            const voiceResponseElement = document.getElementById('voice-response');
+
+            function appendMessage(from, message, isBot = false) {
+                const chatMessage = document.createElement('div');
+                chatMessage.classList.add('message', isBot ? 'bot-message' : 'user-message');
+                chatMessage.textContent = isBot ? message : `${from}: ${message}`;
+                chatContainer.appendChild(chatMessage);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+
+            function getResponse(userInput) {
+                fetch('/get_response', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ userInput: userInput })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const botResponse = data.response;
+                    const voiceResponse = data.voice_response;
+
+                    appendMessage('JARVIS', botResponse, true);
+
+                    // Speak the voice response
+                    speakVoiceResponse(voiceResponse);
+                })
+                .catch(error => console.error('Error:', error));
+            }
+
+            function speakVoiceResponse(voiceResponse) {
+                voiceResponseElement.textContent = voiceResponse;
+                const speechSynthesis = window.speechSynthesis;
+                const voiceSynthesis = new SpeechSynthesisUtterance(voiceResponse);
+                voiceSynthesis.voice = speechSynthesis.getVoices()[0];
+                speechSynthesis.speak(voiceSynthesis);
+            }
+
+            // Check if the browser supports SpeechRecognition
+            const recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (recognition) {
+                // Create a new SpeechRecognition object
+                const recognizer = new recognition();
+
+                // Event listener for when the voice command button is clicked
+                voiceCommandBtn.addEventListener('click', function() {
+                    // Start listening for user voice input
+                    recognizer.start();
+                    voiceCommandBtn.disabled = true;
+                });
+
+                // Event listener for when the recognition service returns a result
+                recognizer.onresult = function(event) {
+                    const userMessage = event.results[0][0].transcript.trim();
+                    if (userMessage) {
+                        appendMessage('You', userMessage);
+                        getResponse(userMessage);
+                    }
+                    voiceCommandBtn.disabled = false;
+                };
+
+                // Event listener for errors
+                recognizer.onerror = function(event) {
+                    console.error('Error:', event.error);
+                    voiceCommandBtn.disabled = false;
+                };
+            } else {
+                console.error('Speech recognition is not supported in this browser.');
+                voiceCommandBtn.style.display = 'none';
+            }
+
+            // Event listener for when the user types and hits Enter key
+            userInput.addEventListener('keypress', function(event) {
+                if (event.key === 'Enter') {
+                    const userMessage = userInput.value.trim();
+                    if (userMessage) {
+                        appendMessage('You', userMessage);
+                        userInput.value = '';
+                        getResponse(userMessage);
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
